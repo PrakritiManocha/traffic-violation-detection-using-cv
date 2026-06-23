@@ -1,0 +1,13 @@
+{
+    "evidence_id": "EV-1782229724-N3-WRONG_",
+    "timestamp": 1782229724.5174546,
+    "node_id": 3,
+    "plate_id": "PLATE_OCR_FAIL",
+    "plate_suspicious": false,
+    "violation_class": "WRONG_SIDE_DRIVING",
+    "confidence": 0.89,
+    "reid_signature": "4B089A2F",
+    "legal_narrative": "EVIDENTIARY BRIEF:\n1. Violation: WRONG_SIDE_DRIVING\n2. Upward displacement vector \u0394Y=-11px over 8 frames on right half of frame (cx=558).\n3. Statutory basis: Section 184 of the Motor Vehicles Act \u2014 Driving in a manner dangerous to public \u2014 wrong side.",
+    "annotated_image_path": "storage\\EV-1782229724-N3-WRONG_.jpg",
+    "cryptographic_hash": "SHA-256:83fbf390e5fa208d4f8f70698528a704c65f6f592f7cd638d9a7357c46dac4a0"
+}

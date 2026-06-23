@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VisionGuard AI</title>
+<style>
+:root {
+  --bg:       #0A0E1A;
+  --surface:  #111827;
+  --card:     #1E293B;
+  --border:   rgba(255,255,255,0.08);
+  --accent:   #3B82F6;
+  --cyan:     #06B6D4;
+  --amber:    #F59E0B;
+  --green:    #10B981;
+  --red:      #EF4444;
+  --flipkart: #F5A623;
+  --text:     #F1F5F9;
+  --muted:    #94A3B8;
+  --radius:   10px;
+  --font: 'Inter', system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font);
+       font-size: 14px; line-height: 1.5; }
+a { color: var(--accent); text-decoration: none; }
+
+/* ── Layout ── */
+.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.sidebar { background: var(--surface); border-right: 1px solid var(--border);
+           padding: 20px 0; display: flex; flex-direction: column; gap: 4px; }
+.main { overflow-y: auto; }
+
+/* ── Sidebar ── */
+.logo { padding: 0 16px 20px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.logo-title { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+.logo-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+            cursor: pointer; border-radius: 0; color: var(--muted);
+            font-size: 13px; transition: all .15s; border: none;
+            background: none; width: 100%; text-align: left; }
+.nav-item:hover  { background: rgba(255,255,255,.04); color: var(--text); }
+.nav-item.active { background: rgba(59,130,246,.15); color: var(--accent);
+                   border-right: 2px solid var(--accent); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.sidebar-section { font-size: 10px; color: var(--muted); letter-spacing: 1px;
+                   text-transform: uppercase; padding: 12px 16px 4px; }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+            animation: pulse 1.5s infinite; margin-left: auto; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Topbar ── */
+.topbar { display: flex; align-items: center; justify-content: space-between;
+          padding: 14px 24px; border-bottom: 1px solid var(--border);
+          background: var(--surface); position: sticky; top: 0; z-index: 10; }
+.page-title { font-size: 15px; font-weight: 600; }
+.topbar-meta { display: flex; align-items: center; gap: 12px; }
+.status-badge { display: flex; align-items: center; gap: 6px; font-size: 12px;
+                color: var(--green); background: rgba(16,185,129,.1);
+                padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(16,185,129,.25); }
+
+/* ── Pages ── */
+.page { display: none; padding: 24px; }
+.page.active { display: block; }
+
+/* ── Stat cards ── */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; line-height: 1; }
+.stat-delta { font-size: 11px; margin-top: 6px; }
+.up   { color: var(--green); }
+.down { color: var(--red); }
+
+/* ── Cards ── */
+.card { background: var(--card); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 16px; }
+.card-title { font-size: 12px; font-weight: 600; color: var(--muted);
+              text-transform: uppercase; letter-spacing: .5px; margin-bottom: 14px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* ── Demo panel ── */
+.demo-grid { display: grid; grid-template-columns: 1fr 420px; gap: 16px; }
+.camera-feed { background: #000; border-radius: var(--radius); overflow: hidden;
+               aspect-ratio: 4/3; position: relative; border: 1px solid var(--border); }
+.camera-feed img { width: 100%; height: 100%; object-fit: cover; }
+.camera-overlay { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; }
+.cam-badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+.cam-live  { background: rgba(239,68,68,.85); color: #fff; }
+.cam-id    { background: rgba(0,0,0,.7); color: var(--muted); }
+.processing-bar { position: absolute; bottom: 0; left: 0; height: 3px;
+                  background: var(--accent); transition: width .4s;
+                  width: 0; border-radius: 0 0 0 0; }
+
+/* ── Controls ── */
+.controls { display: flex; flex-direction: column; gap: 12px; }
+.scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.scenario-btn  { background: var(--surface); border: 1px solid var(--border);
+                 border-radius: 8px; padding: 10px 8px; cursor: pointer;
+                 color: var(--text); font-size: 12px; text-align: center;
+                 transition: all .15s; display: flex; flex-direction: column; gap: 4px; }
+.scenario-btn:hover  { border-color: var(--accent); background: rgba(59,130,246,.08); }
+.scenario-btn.active { border-color: var(--accent); background: rgba(59,130,246,.12);
+                       color: var(--accent); }
+.scenario-icon { font-size: 18px; }
+.analyze-btn { width: 100%; padding: 12px; border-radius: 8px;
+               background: var(--accent); border: none; color: #fff;
+               font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.analyze-btn:hover    { background: #2563EB; }
+.analyze-btn:disabled { opacity: .5; cursor: not-allowed; }
+.upload-zone { border: 1.5px dashed var(--border); border-radius: 8px;
+               padding: 16px; text-align: center; cursor: pointer; color: var(--muted);
+               font-size: 12px; transition: border-color .15s; }
+.upload-zone:hover { border-color: var(--accent); }
+
+/* ── Result panel ── */
+.result-card { background: var(--surface); border: 1px solid var(--border);
+               border-radius: var(--radius); overflow: hidden; }
+.result-header { display: flex; align-items: center; justify-content: space-between;
+                 padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.sev-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.sev-CRITICAL { background: rgba(239,68,68,.2); color: var(--red);   border: 1px solid rgba(239,68,68,.35); }
+.sev-HIGH     { background: rgba(245,158,11,.2); color: var(--amber); border: 1px solid rgba(245,158,11,.35); }
+.sev-MEDIUM   { background: rgba(59,130,246,.2);  color: var(--accent);border: 1px solid rgba(59,130,246,.35); }
+.result-body  { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.result-row   { display: flex; justify-content: space-between; align-items: flex-start;
+                font-size: 13px; gap: 8px; }
+.result-label { color: var(--muted); white-space: nowrap; }
+.result-val   { font-weight: 500; text-align: right; }
+.violation-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.vtag { font-size: 11px; padding: 2px 8px; border-radius: 4px;
+        background: rgba(239,68,68,.15); color: #FCA5A5; border: 1px solid rgba(239,68,68,.25); }
+.causal-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+              padding: 10px 12px; font-size: 12px; color: var(--muted); line-height: 1.55; }
+.intent-alert { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+                background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25);
+                border-radius: 6px; font-size: 12px; color: var(--amber); }
+.spoof-alert  { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+                background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
+                border-radius: 6px; font-size: 12px; color: var(--red); }
+.fine-total { font-size: 22px; font-weight: 700; color: var(--red); }
+.fine-note  { font-size: 11px; color: var(--muted); }
+
+/* ── Fleet page ── */
+.partner-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.partner-table th { text-align: left; color: var(--muted); font-size: 11px;
+                    padding: 8px 12px; border-bottom: 1px solid var(--border);
+                    text-transform: uppercase; letter-spacing: .5px; font-weight: 500; }
+.partner-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.partner-table tr:hover td { background: rgba(255,255,255,.02); }
+.score-bar-wrap { width: 80px; height: 6px; background: rgba(255,255,255,.1); border-radius: 3px; }
+.score-bar { height: 6px; border-radius: 3px; transition: width .5s; }
+.tier-pill { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.tier-Platinum { background: rgba(99,153,34,.2);  color: #86EFAC; }
+.tier-Gold     { background: rgba(245,158,11,.2); color: #FCD34D; }
+.tier-Silver   { background: rgba(148,163,184,.15); color: var(--muted); }
+.tier-Standard { background: rgba(239,68,68,.15); color: #FCA5A5; }
+.intervention-pill { font-size: 10px; padding: 2px 7px; border-radius: 10px; }
+.int-none       { color: var(--green);  background: rgba(16,185,129,.1); }
+.int-advisory   { color: var(--accent); background: rgba(59,130,246,.1); }
+.int-mandatory  { color: var(--amber);  background: rgba(245,158,11,.1); }
+.int-supervisor { color: #c084fc;       background: rgba(192,132,252,.1); }
+.int-temporary  { color: var(--red);    background: rgba(239,68,68,.1); }
+.int-contract   { color: var(--red);    background: rgba(239,68,68,.2); font-weight:700; }
+.badge-chip { font-size: 10px; background: rgba(59,130,246,.12); color: var(--cyan);
+              border: 1px solid rgba(6,182,212,.2); border-radius: 4px; padding: 1px 5px; }
+.action-btn { font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+              border: 1px solid var(--border); background: transparent; color: var(--text);
+              transition: all .15s; }
+.action-btn:hover { background: rgba(59,130,246,.1); border-color: var(--accent); }
+.action-btn.viol { border-color: rgba(239,68,68,.4); color: var(--red); }
+.action-btn.viol:hover { background: rgba(239,68,68,.1); }
+
+/* ── Partner app mockup ── */
+.phone-frame { width: 280px; background: #1a1a2e; border-radius: 28px;
+               border: 2px solid rgba(255,255,255,.12); padding: 20px 16px;
+               font-size: 13px; margin: 0 auto; }
+.phone-status  { display: flex; justify-content: space-between; font-size: 10px;
+                 color: rgba(255,255,255,.4); margin-bottom: 16px; }
+.app-header    { display: flex; align-items: center; justify-content: space-between;
+                 margin-bottom: 16px; }
+.app-logo      { font-size: 14px; font-weight: 700; color: var(--flipkart); }
+.score-circle  { width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 14px;
+                 display: flex; flex-direction: column; align-items: center;
+                 justify-content: center; border: 3px solid; }
+.score-num     { font-size: 26px; font-weight: 800; line-height: 1; }
+.score-lbl     { font-size: 9px; color: rgba(255,255,255,.5); margin-top: 2px; }
+.app-section   { font-size: 10px; color: rgba(255,255,255,.35); text-transform: uppercase;
+                 letter-spacing: .8px; margin: 12px 0 6px; }
+.app-row       { display: flex; justify-content: space-between; align-items: center;
+                 padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 12px; }
+.app-row:last-child { border-bottom: none; }
+.app-row-val   { font-weight: 600; }
+.notification-banner { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3);
+                       border-radius: 8px; padding: 10px 12px; margin: 12px 0;
+                       font-size: 11px; line-height: 1.5; display: none; }
+
+/* ── Analytics charts ── */
+.chart-container { height: 220px; position: relative; }
+
+/* ── Notification toast ── */
+.toast { position: fixed; bottom: 24px; right: 24px; max-width: 320px;
+         background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+         padding: 14px 16px; transform: translateX(400px); transition: transform .35s;
+         z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+.toast.show { transform: translateX(0); }
+.toast-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.toast-body  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ── Misc ── */
+.divider { height: 1px; background: var(--border); margin: 6px 0; }
+.empty-state { text-align: center; color: var(--muted); padding: 40px 0; font-size: 13px; }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.tag  { font-size: 10px; background: rgba(255,255,255,.06); color: var(--muted);
+        padding: 2px 6px; border-radius: 4px; }
+.flex-center { display: flex; align-items: center; gap: 8px; }
+h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+p  { color: var(--muted); font-size: 13px; }
+select, input[type=text], input[type=file] {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 8px 10px; font-size: 13px; width: 100%; }
+select:focus, input:focus { outline: none; border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── SIDEBAR ────────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-title">VisionGuard <span style="color:var(--accent)">AI</span></div>
+    <div class="logo-sub">Flipkart Gridlock Hackathon</div>
+  </div>
+
+  <div class="sidebar-section">Core</div>
+  <button class="nav-item active" onclick="showPage('dashboard')">
+    <span class="nav-icon">⚡</span> Dashboard
+    <span class="live-dot"></span>
+  </button>
+  <button class="nav-item" onclick="showPage('demo')">
+    <span class="nav-icon">📷</span> Live Detection
+  </button>
+  <button class="nav-item" onclick="showPage('violations')">
+    <span class="nav-icon">📋</span> Violation Log
+  </button>
+
+  <div class="sidebar-section">Fleet</div>
+  <button class="nav-item" onclick="showPage('fleet')">
+    <span class="nav-icon">🛵</span> Partner Safety
+  </button>
+  <button class="nav-item" onclick="showPage('partner-app')">
+    <span class="nav-icon">📱</span> Partner App
+  </button>
+
+  <div class="sidebar-section">Intelligence</div>
+  <button class="nav-item" onclick="showPage('analytics')">
+    <span class="nav-icon">📊</span> Analytics
+  </button>
+  <!-- <button class="nav-item" onclick="showPage('features')">
+    <span class="nav-icon">🔬</span> All 16 Features
+  </button> -->
+
+  <div style="margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);margin-top:auto;">
+    <div style="font-size:11px;color:var(--muted);">API running on</div>
+    <div class="mono" style="color:var(--cyan);margin-top:2px;" id="api-url">localhost:8000</div>
+  </div>
+</aside>
+
+<!-- ── MAIN ───────────────────────────────────────────────────────────────── -->
+<div class="main">
+<div class="topbar">
+  <span class="page-title" id="page-title">Dashboard</span>
+  <!-- <div class="topbar-meta">
+    <span class="tag mono" id="ts">--:--:--</span>
+    <div class="status-badge">
+      <span class="live-dot"></span> System Operational
+    </div>
+  </div> -->
+</div>
+
+<!-- PAGE: DASHBOARD ────────────────────────────────────────────────────────── -->
+<div class="page active" id="page-dashboard">
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card"><div class="stat-label">Violations today</div>
+      <div class="stat-value" id="s-viol" style="color:var(--red)">—</div>
+      <div class="stat-delta up">↑ 12% vs yesterday</div></div>
+    <div class="stat-card"><div class="stat-label">Citations issued</div>
+      <div class="stat-value" id="s-cit" style="color:var(--amber)">—</div>
+      <div class="stat-delta up">↑ 4× manual rate</div></div>
+    <div class="stat-card"><div class="stat-label">Fines collected</div>
+      <div class="stat-value" id="s-fine" style="color:var(--green)">—</div>
+      <div class="stat-delta up">₹2.4 Cr/mo projected</div></div>
+    <div class="stat-card"><div class="stat-label">Pre-violation alerts</div>
+      <div class="stat-value" id="s-intent" style="color:var(--cyan)">—</div>
+      <div class="stat-delta">2-second lookahead</div></div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title">Recent violation events</div>
+      <div id="recent-events"><div class="empty-state">Run a detection to see events</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Fleet safety overview</div>
+      <div id="fleet-overview"><div class="empty-state">Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Active cameras</div>
+      <div style="font-size:36px;font-weight:700;color:var(--accent)" id="s-cams">—</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Across 3 zones</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Fleet avg. safety score</div>
+      <div style="font-size:36px;font-weight:700;" id="s-score">—</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Ekart delivery partners</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Critical alerts</div>
+      <div style="font-size:36px;font-weight:700;color:var(--red)" id="s-crit">—</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Score &lt; 35 — contract review</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: DEMO ─────────────────────────────────────────────────────────────── -->
+<div class="page" id="page-demo">
+  <div style="margin-bottom:16px;">
+    <h2>Live detection demo</h2>
+    <!-- <p>Select a scenario, pick a fleet partner (optional), and run the full 16-feature pipeline.</p> -->
+  </div>
+
+  <div class="demo-grid">
+    <!-- Camera feed -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="camera-feed" id="camera-feed">
+        <img id="feed-img" src="" alt="Camera feed" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);flex-direction:column;gap:8px;" id="feed-placeholder">
+          <div style="font-size:40px;">📷</div>
+          <div style="font-size:13px;">Select a scenario and click Analyze</div>
+        </div>
+        <div class="camera-overlay">
+          <span class="cam-badge cam-live">● LIVE</span>
+          <span class="cam-badge cam-id" id="cam-id-badge">CAM_001</span>
+        </div>
+        <div class="processing-bar" id="proc-bar"></div>
+      </div>
+
+      <!-- Upload own image -->
+      <div class="card">
+        <div class="card-title">Or upload your own image</div>
+        <input type="file" id="upload-input" accept="image/*"
+               onchange="handleUpload(this)" style="font-size:12px;">
+      </div>
+
+      <!-- Result after analysis -->
+      <div class="result-card" id="result-card" style="display:none;">
+        <div class="result-header">
+          <div style="font-size:13px;font-weight:600;">Detection result</div>
+          <span class="sev-badge" id="res-sev"></span>
+        </div>
+        <div class="result-body">
+          <div class="result-row">
+            <span class="result-label">Violation ID</span>
+            <span class="result-val mono" id="res-id"></span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Violations detected</span>
+            <div class="violation-tags" id="res-vtags"></div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">License plate</span>
+            <span class="result-val mono" id="res-plate"></span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Plate state</span>
+            <span class="result-val" id="res-state"></span>
+          </div>
+          <div class="intent-alert" id="res-intent" style="display:none;">
+            ⚡ Pre-violation intent detected - <span id="intent-pct"></span>% probability
+          </div>
+          <div class="spoof-alert" id="res-spoof" style="display:none;">
+            🚨 Registration spoof detected - plate does not match vehicle
+          </div>
+          <div class="result-row">
+            <span class="result-label">Total fine</span>
+            <div>
+              <div class="fine-total" id="res-fine"></div>
+              <div class="fine-note" id="res-fine-note"></div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);font-weight:500;margin-top:4px;">
+            Causal reasoning (VLM):
+          </div>
+          <div class="causal-box" id="res-causal"></div>
+          <div id="res-fleet-event" style="display:none;">
+            <div class="divider"></div>
+            <div style="font-size:12px;font-weight:600;color:var(--flipkart);margin-bottom:8px;">
+              Fleet event triggered
+            </div>
+            <div id="res-fleet-body" style="font-size:12px;color:var(--muted);line-height:1.6;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="card">
+        <div class="card-title">Scenario</div>
+        <div class="scenario-grid" id="scenario-grid">
+          <!-- filled by JS -->
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Camera config</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Camera ID</label>
+            <select id="cam-id">
+              <option>CAM_001 — MG Road Intersection</option>
+              <option>CAM_002 — Flipkart Hub Kharadi</option>
+              <option>CAM_003 — Hinjewadi IT Park Gate</option>
+              <option>CAM_004 — Koregaon Park Signal</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">License plate</label>
+            <input type="text" id="plate-input" value="MH12AB1234">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Vehicle type</label>
+            <select id="veh-type">
+              <option value="motorcycle">Motorcycle</option>
+              <option value="car">Car</option>
+              <option value="scooter">Scooter</option>
+              <option value="truck">Truck</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Fleet partner (optional)</div>
+        <select id="partner-select">
+          <option value="">— No partner —</option>
+        </select>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">
+          Link a detection to an Ekart delivery partner to update their safety score.
+        </div>
+      </div>
+
+      <button class="analyze-btn" id="analyze-btn" onclick="runAnalysis()">
+        Run Analysis
+      </button>
+
+      <div class="card" style="font-size:12px;color:var(--muted);line-height:1.6;">
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Pipeline stages</div>
+        <div id="pipeline-stages">
+          <div id="st-clahe"  class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-clahe">⬜</span> CLAHE normalisation</div>
+          <div id="st-rgbe"   class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-rgbe">⬜</span>  RGB+E 4-channel map</div>
+          <div id="st-macro"  class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-macro">⬜</span> YOLOv10 macro detector</div>
+          <div id="st-micro"  class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-micro">⬜</span> Micro expert classifiers</div>
+          <div id="st-grounding" class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-grounding">⬜</span> Grounding DINO open-vocab</div>
+          <div id="st-ocr"   class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-ocr">⬜</span>   PaddleOCR + LP validation</div>
+          <div id="st-spoof"  class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-spoof">⬜</span> Spoof / fraud check</div>
+          <div id="st-intent" class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-intent">⬜</span> Pre-violation intent score</div>
+          <div id="st-causal" class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-causal">⬜</span> VLM causal reasoning</div>
+          <div id="st-fleet"  class="flex-center" style="gap:6px;padding:3px 0;"><span id="ic-fleet">⬜</span>  Fleet gamification update</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: VIOLATION LOG ────────────────────────────────────────────────────── -->
+<div class="page" id="page-violations">
+  <div style="margin-bottom:16px;">
+    <h2>Violation log</h2>
+    <!-- <p>All detections this session — click any row for full causal reasoning.</p> -->
+  </div>
+  <div class="card">
+    <table class="partner-table" id="violation-table">
+      <thead><tr>
+        <th>ID</th><th>Time</th><th>Violations</th><th>Plate</th>
+        <th>Severity</th><th>Fine</th><th>Intent</th><th>Spoof</th>
+      </tr></thead>
+      <tbody id="violation-tbody">
+        <tr><td colspan="8" class="empty-state">No violations recorded yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="causal-detail" style="display:none;margin-top:16px;" class="card">
+    <div class="card-title">Causal reasoning</div>
+    <div id="causal-detail-body" class="causal-box" style="margin:0;"></div>
+  </div>
+</div>
+
+<!-- PAGE: FLEET ────────────────────────────────────────────────────────────── -->
+<div class="page" id="page-fleet">
+  <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div><h2>Ekart fleet safety</h2>
+    <p>Live safety scores, insurance tiers, and intervention triggers for delivery partners.</p></div>
+    <button class="action-btn" onclick="loadFleet()">Refresh</button>
+  </div>
+
+  <div class="stats-row" id="fleet-stats">
+    <div class="stat-card"><div class="stat-label">Partners tracked</div>
+      <div class="stat-value" id="fs-total">—</div></div>
+    <div class="stat-card"><div class="stat-label">Avg safety score</div>
+      <div class="stat-value" id="fs-avg">—</div></div>
+    <div class="stat-card"><div class="stat-label">At risk (score &lt;65)</div>
+      <div class="stat-value" style="color:var(--amber)" id="fs-risk">—</div></div>
+    <div class="stat-card"><div class="stat-label">Monthly premium saved</div>
+      <div class="stat-value" style="color:var(--green);font-size:18px;" id="fs-premium">—</div></div>
+  </div>
+
+  <div class="card">
+    <table class="partner-table" id="fleet-table">
+      <thead><tr>
+        <th>Partner</th><th>Zone</th><th>Safety score</th><th>Insurance tier</th>
+        <th>Streak</th><th>Badges</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="fleet-tbody">
+        <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PAGE: PARTNER APP ──────────────────────────────────────────────────────── -->
+<div class="page" id="page-partner-app">
+  <div style="margin-bottom:16px;">
+    <h2>Partner app mockup</h2>
+    <p>What the Ekart delivery partner sees on their phone after a violation is recorded.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Simulate partner event</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Select partner</label>
+            <select id="app-partner-select"></select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Event type</label>
+            <select id="app-event-type">
+              <option value="violation">Record violation</option>
+              <option value="safe">Safe delivery (+streak)</option>
+            </select>
+          </div>
+          <div id="app-viol-picker">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Violation type</label>
+            <select id="app-viol-type">
+              <option value="helmet_non_compliance">Helmet non-compliance</option>
+              <option value="mobile_phone_use">Mobile phone use</option>
+              <option value="triple_riding">Triple riding</option>
+              <option value="red_light_violation">Red light violation</option>
+              <option value="wrong_side_driving">Wrong-side driving</option>
+            </select>
+          </div>
+          <button class="analyze-btn" onclick="sendAppEvent()">Send event →</button>
+        </div>
+      </div>
+      <div class="card" id="event-result" style="display:none;">
+        <div class="card-title">Event result</div>
+        <pre id="event-json" style="font-size:11px;color:var(--muted);white-space:pre-wrap;line-height:1.6;"></pre>
+      </div>
+    </div>
+
+    <!-- Phone mockup -->
+    <div style="background:var(--card);border-radius:var(--radius);padding:24px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;text-align:center;">
+        Ekart Partner App — live preview
+      </div>
+      <div class="phone-frame" id="phone-frame">
+        <div class="phone-status">
+          <span>9:41 AM</span><span>●●● 5G ■■■</span>
+        </div>
+        <div class="app-header">
+          <span class="app-logo">ekart</span>
+          <span style="font-size:11px;color:rgba(255,255,255,.4);" id="app-partner-name">—</span>
+        </div>
+
+        <div style="text-align:center;margin-bottom:14px;">
+          <div class="score-circle" id="score-circle" style="border-color:#10B981;">
+            <div class="score-num" id="app-score">—</div>
+            <div class="score-lbl">safety score</div>
+          </div>
+          <div style="font-size:11px;margin-bottom:2px;" id="app-tier-label">—</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);" id="app-premium">—</div>
+        </div>
+
+        <div class="notification-banner" id="app-notif">
+          <div style="font-weight:700;font-size:12px;color:#FCA5A5;margin-bottom:4px;">
+            Safety alert
+          </div>
+          <div id="app-notif-body" style="color:rgba(255,255,255,.6);"></div>
+        </div>
+
+        <div class="app-section">This month</div>
+        <div class="app-row"><span>Deliveries</span><span class="app-row-val" id="app-deliveries">—</span></div>
+        <div class="app-row"><span>Streak</span><span class="app-row-val" id="app-streak">—</span></div>
+        <div class="app-row"><span>Violations</span><span class="app-row-val" id="app-viols" style="color:#FCA5A5;">—</span></div>
+
+        <div class="app-section">Coaching</div>
+        <div class="app-row">
+          <span>Pending modules</span>
+          <span class="app-row-val" id="app-modules" style="color:var(--amber);">0</span>
+        </div>
+
+        <div class="app-section">Badges</div>
+        <div id="app-badges" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: ANALYTICS ────────────────────────────────────────────────────────── -->
+<div class="page" id="page-analytics">
+  <div style="margin-bottom:16px;"><h2>Analytics</h2>
+  <p>Session statistics and violation trends.</p></div>
+
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title">Violations by type (this session)</div>
+      <canvas id="chart-types" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Fine revenue by severity</div>
+      <canvas id="chart-fines" height="200"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Fleet insurance tier breakdown</div>
+    <canvas id="chart-tiers" height="160"></canvas>
+  </div>
+</div>
+
+<!-- PAGE: FEATURES ──────────────────────────────────────────────────────────── -->
+<div class="page" id="page-features">
+  <div style="margin-bottom:16px;"><h2>All 16 features</h2>
+  <p>Complete implementation status and research references.</p></div>
+  <div id="features-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<div class="toast" id="toast">
+  <div class="toast-title" id="toast-title"></div>
+  <div class="toast-body"  id="toast-body"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const API = 'http://localhost:8000';
+let currentScenario = 'triple_riding';
+let sessionViolations = [];
+let charts = {};
+
+// ── Scenarios ─────────────────────────────────────────────────────────────────
+const SCENARIOS = [
+  {id:'triple_riding',   icon:'🏍️', label:'Triple riding'},
+  {id:'helmet',          icon:'⛑️', label:'No helmet'},
+  {id:'red_light',       icon:'🚦', label:'Red light'},
+  {id:'mobile',          icon:'📱', label:'Phone use'},
+  {id:'wrong_side',      icon:'⬅️', label:'Wrong side'},
+  {id:'spoof',           icon:'🚨', label:'Plate spoof'},
+  {id:'parking',         icon:'🅿️', label:'Illegal park'},
+  {id:'overload',        icon:'📦', label:'Overloading'},
+];
+
+const PIPELINE_STAGES = [
+  {id:'clahe',      label:'CLAHE normalisation',    delay:120},
+  {id:'rgbe',       label:'RGB+E 4-channel',         delay:80},
+  {id:'macro',      label:'YOLOv10 macro detect',    delay:200},
+  {id:'micro',      label:'Micro expert classifier', delay:180},
+  {id:'grounding',  label:'Grounding DINO',          delay:300},
+  {id:'ocr',        label:'PaddleOCR + LP validate', delay:150},
+  {id:'spoof',      label:'Spoof / fraud check',     delay:100},
+  {id:'intent',     label:'Pre-violation intent',    delay:120},
+  {id:'causal',     label:'VLM causal reasoning',    delay:400},
+  {id:'fleet',      label:'Fleet gamification',      delay:80},
+];
+
+const FEATURES_DATA = [
+  {phase:1, id:'F1',  title:'Async ring buffer',         status:'implemented', ref:'Redis/Celery pattern'},
+  {phase:1, id:'F2',  title:'CLAHE / Zero-DCE normalisation', status:'implemented', ref:'OpenCV CLAHE'},
+  {phase:1, id:'F3',  title:'Cascade macro/micro inference',  status:'implemented', ref:'YOLOv10 + ROI'},
+  {phase:1, id:'F4',  title:'PaddleOCR + Indian LP validation',status:'implemented',ref:'State codes, BH series'},
+  {phase:2, id:'F5',  title:'ByteTrack state machines',   status:'implemented', ref:'ByteTrack + Kalman'},
+  {phase:2, id:'F6',  title:'Dynamic virtual gates',      status:'implemented', ref:'Semantic seg. re-calib'},
+  {phase:2, id:'F7',  title:'INT8 ONNX quantisation',     status:'implemented', ref:'45+ FPS edge deploy'},
+  {phase:3, id:'F8',  title:'PostgreSQL geo ledger',       status:'implemented', ref:'PostGIS + heatmaps'},
+  {phase:3, id:'F9',  title:'Async PDF evidence engine',   status:'implemented', ref:'ReportLab / WeasyPrint'},
+  {phase:4, id:'F10', title:'RGB+E 4-channel input layer', status:'implemented', ref:'Past Flipkart GRID win'},
+  {phase:4, id:'F11', title:'Cross-camera Re-ID mesh',     status:'implemented', ref:'Feature embedding vectors'},
+  {phase:4, id:'F12', title:'Registration spoof detection',status:'implemented', ref:'Make+model vs RTO DB'},
+  {phase:4, id:'F13', title:'Monocular 3D occlusion ghost',status:'implemented', ref:'Depth est. + Kalman'},
+  {phase:'★', id:'F14',title:'Open-vocab detection (DINO)',status:'implemented', ref:'Grounding DINO, ECCV 2024'},
+  {phase:'★', id:'F15',title:'Pre-violation intent score', status:'implemented', ref:'IEEE Access Jan 2024'},
+  {phase:'★', id:'F16',title:'Ekart fleet gamification',   status:'implemented', ref:'Safety score + Digit Ins.'},
+];
+
+const PHASE_COLORS = {1:'var(--accent)',2:'var(--cyan)',3:'var(--green)',4:'var(--amber)','★':'var(--flipkart)'};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildScenarioGrid();
+  buildFeaturesGrid();
+  loadStats();
+  loadFleet();
+  loadPartnerSelects();
+  setInterval(() => { document.getElementById('ts').textContent = new Date().toLocaleTimeString(); }, 1000);
+  setInterval(loadStats, 15000);
+});
+
+// ── Navigation ─────────────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const titles = {dashboard:'Dashboard',demo:'Live Detection',violations:'Violation Log',
+    fleet:'Fleet Safety',analytics:'Analytics',features:'All 16 Features','partner-app':'Partner App'};
+  document.getElementById('page-title').textContent = titles[id] || id;
+  event.currentTarget.classList.add('active');
+  if (id === 'analytics') renderCharts();
+  if (id === 'fleet') loadFleet();
+}
+
+// ── Scenarios ─────────────────────────────────────────────────────────────────
+function buildScenarioGrid() {
+  const g = document.getElementById('scenario-grid');
+  g.innerHTML = SCENARIOS.map(s => `
+    <button class="scenario-btn ${s.id===currentScenario?'active':''}"
+            onclick="selectScenario('${s.id}',this)">
+      <span class="scenario-icon">${s.icon}</span>
+      <span>${s.label}</span>
+    </button>`).join('');
+}
+
+function selectScenario(id, el) {
+  currentScenario = id;
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/stats/live`);
+    const d = await r.json();
+    document.getElementById('s-viol').textContent   = d.violations_today;
+    document.getElementById('s-cit').textContent    = d.citations_issued;
+    document.getElementById('s-fine').textContent   = `₹${(d.fines_collected_inr/100000).toFixed(1)}L`;
+    document.getElementById('s-intent').textContent = d.pre_violation_alerts;
+    document.getElementById('s-cams').textContent   = d.cameras_active;
+    document.getElementById('s-score').textContent  = d.fleet_avg_score;
+    document.getElementById('s-crit').textContent   = d.critical_alerts;
+  } catch(e) {
+    // API offline — show demo numbers
+    document.getElementById('s-viol').textContent   = '143';
+    document.getElementById('s-cit').textContent    = '118';
+    document.getElementById('s-fine').textContent   = '₹2.1L';
+    document.getElementById('s-intent').textContent = '21';
+    document.getElementById('s-cams').textContent   = '22';
+    document.getElementById('s-score').textContent  = '73.1';
+    document.getElementById('s-crit').textContent   = '1';
+  }
+}
+
+// ── Fleet ──────────────────────────────────────────────────────────────────────
+async function loadFleet() {
+  try {
+    const [ps, rep] = await Promise.all([
+      fetch(`${API}/fleet/partners`).then(r=>r.json()),
+      fetch(`${API}/fleet/report`).then(r=>r.json()),
+    ]);
+    renderFleetTable(ps);
+    renderFleetStats(rep);
+    renderFleetOverview(ps);
+    updatePartnerSelects(ps);
+  } catch(e) {
+    renderFleetTable(DEMO_PARTNERS);
+    renderFleetStats({total_partners:5, avg_safety_score:73.3, partners_at_risk:2, monthly_premium_pool_saved_inr:4600});
+    renderFleetOverview(DEMO_PARTNERS);
+    updatePartnerSelects(DEMO_PARTNERS);
+  }
+}
+
+const DEMO_PARTNERS = [
+  {partner_id:'EK001',name:'Ravi Kumar',zone:'Koregaon Park',safety_score:94,streak_days:14,
+   violations_this_month:0,badges:['Platinum Rider','14-Day Streak'],
+   insurance_tier:{label:'Platinum',monthly_premium:180},intervention:'none',total_deliveries:312},
+  {partner_id:'EK002',name:'Suresh Patil',zone:'Hinjewadi',safety_score:61,streak_days:2,
+   violations_this_month:3,badges:[],
+   insurance_tier:{label:'Silver',monthly_premium:380},intervention:'mandatory_module',total_deliveries:187},
+  {partner_id:'EK003',name:'Amit Singh',zone:'Viman Nagar',safety_score:78.5,streak_days:7,
+   violations_this_month:1,badges:['7-Day Streak'],
+   insurance_tier:{label:'Gold',monthly_premium:250},intervention:'none',total_deliveries:501},
+  {partner_id:'EK004',name:'Priya Nair',zone:'Kharadi',safety_score:45,streak_days:0,
+   violations_this_month:5,badges:[],
+   insurance_tier:{label:'Standard',monthly_premium:480},intervention:'supervisor_review',total_deliveries:98},
+  {partner_id:'EK005',name:'Deepak Rao',zone:'Wakad',safety_score:88,streak_days:11,
+   violations_this_month:0,badges:['10-Day Streak','Road Veteran'],
+   insurance_tier:{label:'Platinum',monthly_premium:180},intervention:'none',total_deliveries:430},
+];
+
+function scoreColor(s) {
+  if (s >= 80) return '#10B981';
+  if (s >= 65) return '#F59E0B';
+  if (s >= 40) return '#EF4444';
+  return '#DC2626';
+}
+
+function interventionClass(iv) {
+  const m = {none:'int-none',advisory_push:'int-advisory',mandatory_module:'int-mandatory',
+             supervisor_review:'int-supervisor',temporary_suspension:'int-temporary',contract_review:'int-contract'};
+  return m[iv] || 'int-none';
+}
+
+function interventionLabel(iv) {
+  return (iv||'none').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+function renderFleetTable(partners) {
+  const tbody = document.getElementById('fleet-tbody');
+  if (!partners || !partners.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No partners found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = partners.map(p => {
+    const score = Math.round(p.safety_score);
+    const tier  = p.insurance_tier || {label:'Standard',monthly_premium:480};
+    const iv    = p.intervention || 'none';
+    const badges = (p.badges||[]).map(b=>`<span class="badge-chip">${b}</span>`).join('');
+    return `<tr>
+      <td><div style="font-weight:500">${p.name}</div>
+          <div class="mono" style="color:var(--muted);font-size:10px;">${p.partner_id}</div></td>
+      <td>${p.zone}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="score-bar-wrap"><div class="score-bar" style="width:${score}%;background:${scoreColor(score)};"></div></div>
+          <span style="font-weight:600;color:${scoreColor(score)}">${score}</span>
+        </div>
+      </td>
+      <td><span class="tier-pill tier-${tier.label}">${tier.label}</span>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">₹${tier.monthly_premium}/mo</div></td>
+      <td>${p.streak_days || 0} days</td>
+      <td style="max-width:140px;">${badges||'<span style="color:var(--muted);font-size:11px;">None yet</span>'}</td>
+      <td><span class="intervention-pill ${interventionClass(iv)}">${interventionLabel(iv)}</span></td>
+      <td style="display:flex;gap:4px;">
+        <button class="action-btn viol" onclick="quickViolation('${p.partner_id}')">Violate</button>
+        <button class="action-btn" onclick="quickSafe('${p.partner_id}')">Safe ✓</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderFleetStats(rep) {
+  if (!rep) return;
+  document.getElementById('fs-total').textContent   = rep.total_partners || '—';
+  document.getElementById('fs-avg').textContent     = rep.avg_safety_score || '—';
+  document.getElementById('fs-risk').textContent    = rep.partners_at_risk || '—';
+  document.getElementById('fs-premium').textContent = rep.monthly_premium_pool_saved_inr
+    ? `₹${rep.monthly_premium_pool_saved_inr.toLocaleString()}` : '—';
+}
+
+function renderFleetOverview(partners) {
+  const el = document.getElementById('fleet-overview');
+  if (!partners || !partners.length) { el.innerHTML = '<div class="empty-state">No data</div>'; return; }
+  el.innerHTML = partners.slice(0,5).map(p => {
+    const score = Math.round(p.safety_score);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:${scoreColor(score)};">${score}</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;">${p.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${p.zone}</div>
+      </div>
+      <span class="tier-pill tier-${(p.insurance_tier||{label:'Standard'}).label}">${(p.insurance_tier||{label:'Standard'}).label}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Partner selects ───────────────────────────────────────────────────────────
+function updatePartnerSelects(partners) {
+  const opts = partners.map(p=>`<option value="${p.partner_id}">${p.name} (${p.partner_id})</option>`).join('');
+  ['partner-select','app-partner-select'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isMain = id === 'partner-select';
+    el.innerHTML = (isMain ? '<option value="">— No partner —</option>' : '') + opts;
+  });
+  // Load first partner into phone mockup
+  if (partners.length) updatePhoneMockup(partners[0]);
+}
+
+async function loadPartnerSelects() {
+  try {
+    const ps = await fetch(`${API}/fleet/partners`).then(r=>r.json());
+    updatePartnerSelects(ps);
+  } catch { updatePartnerSelects(DEMO_PARTNERS); }
+}
+
+// ── Main analysis ─────────────────────────────────────────────────────────────
+async function runAnalysis() {
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true; btn.textContent = 'Analyzing…';
+
+  // Reset stage indicators
+  PIPELINE_STAGES.forEach(s => { document.getElementById('ic-'+s.id).textContent = '⬜'; });
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('proc-bar').style.width = '0';
+
+  // Animate pipeline stages
+  let totalDelay = 0;
+  PIPELINE_STAGES.forEach((st, i) => {
+    totalDelay += st.delay;
+    setTimeout(() => {
+      document.getElementById('ic-'+st.id).textContent = '✅';
+      document.getElementById('proc-bar').style.width = `${Math.round((i+1)/PIPELINE_STAGES.length*100)}%`;
+    }, totalDelay);
+  });
+
+  const plate   = document.getElementById('plate-input').value || 'MH12AB1234';
+  const camFull = document.getElementById('cam-id').value;
+  const camId   = camFull.split('—')[0].trim();
+  const vehType = document.getElementById('veh-type').value;
+  const partnerId = document.getElementById('partner-select').value || null;
+
+  const payload = {
+    scenario:     currentScenario,
+    camera_id:    camId,
+    location:     camFull.includes('—') ? camFull.split('—')[1].trim() : 'Bengaluru',
+    vehicle_type: vehType,
+    vehicle_color:'black',
+    plate_text:   plate,
+    partner_id:   partnerId || null,
+  };
+
+  try {
+    const res  = await fetch(`${API}/analyze`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    setTimeout(() => renderResult(data), totalDelay + 100);
+  } catch(e) {
+    // Offline demo — generate mock result
+    const mock = generateMockResult(payload);
+    setTimeout(() => renderResult(mock), totalDelay + 100);
+  }
+
+  setTimeout(() => { btn.disabled = false; btn.textContent = 'Run Analysis'; }, totalDelay + 200);
+}
+
+function generateMockResult(p) {
+  const MAP = {
+    triple_riding: {types:['triple_riding','helmet_non_compliance'], fine:3000, sev:'CRITICAL'},
+    helmet:        {types:['helmet_non_compliance'], fine:1000, sev:'HIGH'},
+    red_light:     {types:['red_light_violation','stop_line_violation'], fine:2500, sev:'HIGH'},
+    mobile:        {types:['mobile_phone_use'], fine:1500, sev:'HIGH'},
+    wrong_side:    {types:['wrong_side_driving'], fine:5000, sev:'CRITICAL'},
+    spoof:         {types:['registration_spoof','no_number_plate'], fine:15000, sev:'CRITICAL'},
+    parking:       {types:['illegal_parking'], fine:500, sev:'MEDIUM'},
+    overload:      {types:['overloading'], fine:2000, sev:'HIGH'},
+  };
+  const s = MAP[p.scenario] || MAP.triple_riding;
+  const causalMap = {
+    triple_riding: 'Three persons observed on single two-wheeler. S.128 MV Act permits max 2. Third rider destabilises vehicle, increases stopping distance ~30%. Fatality risk at >40 km/h: critical.',
+    helmet_non_compliance: 'Rider\'s head lacks protective headgear. S.129 MV Act mandates ISI-marked helmet. At 40 km/h unhelmeted impact causes 73% higher fatality probability.',
+    red_light_violation: 'Vehicle crossed stop-line and entered intersection during red phase. S.177A MV Act. Cross-traffic conflict probability: 88%. Clearance time violated by ~2.4s.',
+    registration_spoof: 'OCR plate MH12AB1234 registered to Hero Splendor (motorcycle) but detected vehicle class is car. S.192A MV Act. Possible cloned plate — flagged for manual verification.',
+    mobile_phone_use: 'Driver observed holding and operating mobile device at ~45 km/h. S.184 MV Act. Reaction time increases 4×; equivalent impairment to BAC 0.08%.',
+    wrong_side_driving: 'Vehicle travelling against legal traffic flow. S.184 MV Act. Head-on collision risk 8× higher. Estimated closing speed with opposing traffic: 90–120 km/h.',
+    illegal_parking: 'Vehicle stationary in no-parking zone, obstructing 1.2 lanes. S.122 MV Act. Downstream congestion propagation estimated 400m.',
+    overloading: 'Load visually exceeds permitted GVW. S.194 MV Act. Overloaded vehicles have 40% longer stopping distances and elevated tyre blowout risk.',
+  };
+  const causal = s.types.map(t => causalMap[t] || t).join(' | ');
+  const intentP = p.scenario === 'red_light' ? 0.82 : Math.random()*0.5;
+  const spoof   = p.scenario === 'spoof';
+
+  const rec = {
+    id: Math.random().toString(36).slice(2,10).toUpperCase(),
+    timestamp: new Date().toISOString(),
+    violation_types: s.types,
+    confidence: Object.fromEntries(s.types.map(t=>[t, +(Math.random()*.1+.88).toFixed(3)])),
+    license_plate: p.plate_text,
+    plate_info: {valid:true, plate:p.plate_text, state:'Maharashtra', state_code:'MH'},
+    causal_reasoning: causal,
+    severity: s.sev,
+    fine_inr: s.fine,
+    spoof_alert: spoof,
+    intent_score: intentP,
+    partner_id: p.partner_id,
+    annotated_image_b64: null,
+  };
+
+  if (p.partner_id) {
+    const partner = DEMO_PARTNERS.find(x=>x.partner_id===p.partner_id);
+    if (partner) {
+      const deduction = s.types.reduce((a,t)=>a+({helmet_non_compliance:15,triple_riding:25,red_light_violation:20,mobile_phone_use:20,wrong_side_driving:30,registration_spoof:50,illegal_parking:10,overloading:15,stop_line_violation:10,no_number_plate:20}[t]||10),0);
+      const before = partner.safety_score;
+      partner.safety_score = Math.max(0, before - deduction);
+      partner.violations_this_month++;
+      partner.streak_days = 0;
+      rec.fleet_event = {
+        partner_id: p.partner_id,
+        partner_name: partner.name,
+        score_before: before,
+        score_after: partner.safety_score,
+        deduction,
+        intervention: partner.safety_score <= 35 ? 'contract_review' : partner.safety_score <= 50 ? 'supervisor_review' : partner.safety_score <= 65 ? 'mandatory_module' : 'advisory_push',
+        notification: {
+          score_change: `${Math.round(before)} → ${Math.round(partner.safety_score)}`,
+          action_required: 'Mandatory Training Module',
+          coaching_modules: ['Helmet Safety & ISI Standards (4 min)'],
+          fine_avoided_if_corrected_inr: s.fine,
+        },
+      };
+    }
+  }
+  return rec;
+}
+
+function renderResult(data) {
+  document.getElementById('result-card').style.display = 'block';
+  document.getElementById('res-id').textContent    = data.id || '—';
+  document.getElementById('res-plate').textContent = data.license_plate || '—';
+  const state = data.plate_info && data.plate_info.state ? data.plate_info.state : '—';
+  document.getElementById('res-state').textContent = state;
+  document.getElementById('res-fine').textContent  = `₹${(data.fine_inr||0).toLocaleString()}`;
+  const notes = (data.violation_types||[]).map(v=>{
+    const SECTIONS={helmet_non_compliance:'S.129',triple_riding:'S.128',red_light_violation:'S.177A',
+      wrong_side_driving:'S.184',mobile_phone_use:'S.184',illegal_parking:'S.122',
+      registration_spoof:'S.192A',overloading:'S.194',no_number_plate:'S.39'};
+    return SECTIONS[v]||'';
+  }).filter(Boolean).join(', ');
+  document.getElementById('res-fine-note').textContent = notes ? `Under ${notes} MV Act` : '';
+  document.getElementById('res-causal').textContent    = data.causal_reasoning || '—';
+
+  const sev = data.severity || 'MEDIUM';
+  const sb  = document.getElementById('res-sev');
+  sb.textContent = sev; sb.className = `sev-badge sev-${sev}`;
+
+  const tags = document.getElementById('res-vtags');
+  tags.innerHTML = (data.violation_types||[]).map(v=>
+    `<span class="vtag">${v.replace(/_/g,' ')}</span>`).join('');
+
+  const intent = document.getElementById('res-intent');
+  if (data.intent_score >= 0.75) {
+    intent.style.display = 'flex';
+    document.getElementById('intent-pct').textContent = Math.round(data.intent_score*100);
+  } else { intent.style.display = 'none'; }
+
+  document.getElementById('res-spoof').style.display = data.spoof_alert ? 'flex' : 'none';
+
+  const fe = document.getElementById('res-fleet-event');
+  if (data.fleet_event) {
+    fe.style.display = 'block';
+    const ev = data.fleet_event;
+    document.getElementById('res-fleet-body').innerHTML =
+      `Partner <strong>${ev.partner_name}</strong> (${ev.partner_id})<br>
+       Score: <strong>${Math.round(ev.score_before)} → ${Math.round(ev.score_after)}</strong>
+       (−${ev.deduction} pts)<br>
+       Action: <strong>${(ev.intervention||'').replace(/_/g,' ')}</strong><br>
+       Coaching module queued to partner app.`;
+  } else { fe.style.display = 'none'; }
+
+  if (data.annotated_image_b64) {
+    const img = document.getElementById('feed-img');
+    img.src = 'data:image/jpeg;base64,' + data.annotated_image_b64;
+    img.style.display = 'block';
+    document.getElementById('feed-placeholder').style.display = 'none';
+  }
+
+  // Add to session log
+  sessionViolations.unshift(data);
+  updateViolationTable();
+  showToast(`${sev} violation detected`,
+    (data.violation_types||[]).map(v=>v.replace(/_/g,' ')).join(', ') + ` — ₹${(data.fine_inr||0).toLocaleString()}`);
+
+  if (data.fleet_event) {
+    setTimeout(() => loadFleet(), 500);
+    const ev = data.fleet_event;
+    const partner = DEMO_PARTNERS.find(p=>p.partner_id===ev.partner_id);
+    if (partner) updatePhoneMockup(partner, ev.notification);
+  }
+}
+
+// ── Upload ─────────────────────────────────────────────────────────────────────
+function handleUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const b64 = e.target.result.split(',')[1];
+    const img = document.getElementById('feed-img');
+    img.src   = e.target.result; img.style.display = 'block';
+    document.getElementById('feed-placeholder').style.display = 'none';
+    const btn = document.getElementById('analyze-btn');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${API}/analyze`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({image_b64:b64, scenario:currentScenario,
+          plate_text: document.getElementById('plate-input').value}),
+      });
+      renderResult(await res.json());
+    } catch {
+      const mock = generateMockResult({scenario:currentScenario,
+        plate_text:document.getElementById('plate-input').value});
+      renderResult(mock);
+    }
+    btn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Violation table ───────────────────────────────────────────────────────────
+function updateViolationTable() {
+  const tbody = document.getElementById('violation-tbody');
+  if (!sessionViolations.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No violations recorded yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = sessionViolations.map(v => {
+    const t = new Date(v.timestamp).toLocaleTimeString();
+    const tags = (v.violation_types||[]).map(x=>`<span class="vtag" style="font-size:10px;">${x.replace(/_/g,' ')}</span>`).join('');
+    return `<tr onclick="showCausal('${v.id}')" style="cursor:pointer;">
+      <td class="mono" style="font-size:11px;">${v.id}</td>
+      <td style="font-size:12px;">${t}</td>
+      <td><div style="display:flex;flex-wrap:wrap;gap:3px;">${tags}</div></td>
+      <td class="mono" style="font-size:11px;">${v.license_plate||'—'}</td>
+      <td><span class="sev-badge sev-${v.severity||'MEDIUM'}" style="font-size:10px;">${v.severity||'—'}</span></td>
+      <td style="font-weight:600;color:var(--red)">₹${(v.fine_inr||0).toLocaleString()}</td>
+      <td>${v.intent_score>=0.75?`<span style="color:var(--amber);font-size:11px;">⚡ ${Math.round(v.intent_score*100)}%</span>`:'—'}</td>
+      <td>${v.spoof_alert?'<span style="color:var(--red);font-size:11px;">🚨 Yes</span>':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function showCausal(id) {
+  const v = sessionViolations.find(x=>x.id===id);
+  if (!v) return;
+  document.getElementById('causal-detail').style.display = 'block';
+  document.getElementById('causal-detail-body').textContent = v.causal_reasoning || '—';
+}
+
+// ── Quick fleet actions ───────────────────────────────────────────────────────
+async function quickViolation(pid) {
+  try {
+    await fetch(`${API}/fleet/partners/${pid}/violation`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({violation_types:['helmet_non_compliance'],fine_inr:1000,location:'Bengaluru',severity:'HIGH'}),
+    });
+  } catch {
+    const p = DEMO_PARTNERS.find(x=>x.partner_id===pid);
+    if (p) { p.safety_score = Math.max(0, p.safety_score - 15); p.violations_this_month++; p.streak_days=0; }
+  }
+  setTimeout(loadFleet, 300);
+  showToast('Violation recorded', `Safety score deducted for partner ${pid}`);
+}
+
+async function quickSafe(pid) {
+  try { await fetch(`${API}/fleet/partners/${pid}/safe_delivery`, {method:'POST'}); }
+  catch {
+    const p = DEMO_PARTNERS.find(x=>x.partner_id===pid);
+    if (p) { p.streak_days++; p.safety_score = Math.min(100, p.safety_score + 0.5); }
+  }
+  setTimeout(loadFleet, 300);
+  showToast('Safe delivery logged', `Streak and score updated for ${pid}`);
+}
+
+// ── Partner app ───────────────────────────────────────────────────────────────
+document.getElementById('app-event-type').addEventListener('change', function() {
+  document.getElementById('app-viol-picker').style.display = this.value==='violation'?'block':'none';
+});
+document.getElementById('app-partner-select').addEventListener('change', function() {
+  const p = DEMO_PARTNERS.find(x=>x.partner_id===this.value) ||
+            DEMO_PARTNERS.find(x=>x.partner_id==='EK001');
+  if (p) updatePhoneMockup(p);
+});
+
+async function sendAppEvent() {
+  const pid       = document.getElementById('app-partner-select').value;
+  const eventType = document.getElementById('app-event-type').value;
+  const violType  = document.getElementById('app-viol-type').value;
+  let result;
+  try {
+    if (eventType === 'safe') {
+      result = await fetch(`${API}/fleet/partners/${pid}/safe_delivery`,{method:'POST'}).then(r=>r.json());
+    } else {
+      result = await fetch(`${API}/fleet/partners/${pid}/violation`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({violation_types:[violType],fine_inr:1500,location:'Bengaluru',severity:'HIGH'}),
+      }).then(r=>r.json());
+    }
+  } catch {
+    const p = DEMO_PARTNERS.find(x=>x.partner_id===pid);
+    if (p) {
+      if (eventType==='safe') {
+        p.streak_days++; p.safety_score=Math.min(100,p.safety_score+0.5);
+        result={partner_id:pid,streak:p.streak_days,score:p.safety_score};
+      } else {
+        const ded={helmet_non_compliance:15,mobile_phone_use:20,triple_riding:25,red_light_violation:20,wrong_side_driving:30}[violType]||15;
+        const before=p.safety_score;
+        p.safety_score=Math.max(0,before-ded); p.violations_this_month++; p.streak_days=0;
+        result={partner_id:pid,score_before:before,score_after:p.safety_score,deduction:ded,
+          intervention:p.safety_score<=50?'supervisor_review':'mandatory_module',
+          notification:{score_change:`${Math.round(before)} → ${Math.round(p.safety_score)}`,
+            coaching_modules:[{helmet_non_compliance:'Helmet Safety (4 min)',mobile_phone_use:'Distracted Riding (5 min)',
+            triple_riding:'Load Limits (3 min)',red_light_violation:'Signal Discipline (4 min)',
+            wrong_side_driving:'Traffic Flow Rules (6 min)'}[violType]||'Safety module (4 min)'],
+            action_required:(p.safety_score<=50?'Supervisor Review':'Mandatory Training Module')},
+        };
+      }
+    }
+  }
+
+  document.getElementById('event-result').style.display = 'block';
+//   document.getElementById('event-json').textContent = JSON.stringify(result, null, 2);
+
+  const p = DEMO_PARTNERS.find(x=>x.partner_id===pid);
+  if (p) updatePhoneMockup(p, eventType==='violation' ? result.notification : null);
+  setTimeout(loadFleet, 500);
+}
+
+function updatePhoneMockup(p, notification) {
+  const score = Math.round(p.safety_score);
+  const tier  = p.insurance_tier || {label:'Standard',monthly_premium:480};
+  const color = scoreColor(score);
+  document.getElementById('app-partner-name').textContent = p.name;
+  document.getElementById('app-score').textContent        = score;
+  document.getElementById('app-score').style.color        = color;
+  document.getElementById('score-circle').style.borderColor = color;
+  document.getElementById('app-tier-label').textContent   = `${tier.label} tier`;
+  document.getElementById('app-tier-label').style.color   = color;
+  document.getElementById('app-premium').textContent      = `₹${tier.monthly_premium}/month insurance`;
+  document.getElementById('app-deliveries').textContent   = p.total_deliveries || 0;
+  document.getElementById('app-streak').textContent       = `${p.streak_days || 0} days`;
+  document.getElementById('app-viols').textContent        = p.violations_this_month || 0;
+  const badges = document.getElementById('app-badges');
+  badges.innerHTML = (p.badges||[]).length
+    ? (p.badges||[]).map(b=>`<span class="badge-chip">${b}</span>`).join('')
+    : '<span style="font-size:10px;color:rgba(255,255,255,.3);">No badges yet</span>';
+
+  const notifEl = document.getElementById('app-notif');
+  if (notification) {
+    notifEl.style.display = 'block';
+    document.getElementById('app-notif-body').innerHTML =
+      `Score: <strong>${notification.score_change}</strong><br>
+       Action: ${notification.action_required}<br>
+       ${(notification.coaching_modules||[]).length ? 'Module: '+notification.coaching_modules[0] : ''}`;
+    document.getElementById('app-modules').textContent = (notification.coaching_modules||[]).length;
+  } else { notifEl.style.display = 'none'; document.getElementById('app-modules').textContent = 0; }
+}
+
+// ── Analytics charts ──────────────────────────────────────────────────────────
+function renderCharts() {
+  const PALETTE = ['#EF4444','#F59E0B','#3B82F6','#10B981','#06B6D4','#8B5CF6','#EC4899','#14B8A6'];
+
+  const allTypes = {};
+  sessionViolations.forEach(v => (v.violation_types||[]).forEach(t => {
+    allTypes[t] = (allTypes[t]||0)+1;
+  }));
+
+  if (Object.keys(allTypes).length === 0) {
+    allTypes['triple_riding']=3;allTypes['helmet_non_compliance']=5;
+    allTypes['red_light_violation']=2;allTypes['mobile_phone_use']=4;allTypes['illegal_parking']=1;
+  }
+
+  const labels = Object.keys(allTypes).map(t=>t.replace(/_/g,' '));
+  const vals   = Object.values(allTypes);
+
+  if (charts.types) charts.types.destroy();
+  charts.types = new Chart(document.getElementById('chart-types'), {
+    type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:PALETTE.slice(0,vals.length),borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#94A3B8',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'}},
+              y:{ticks:{color:'#94A3B8'},grid:{color:'rgba(255,255,255,.06)'}}}},
+  });
+
+  const FINE_BY_SEV = {CRITICAL:0,HIGH:0,MEDIUM:0};
+  sessionViolations.forEach(v => { FINE_BY_SEV[v.severity||'MEDIUM'] += v.fine_inr||0; });
+  if (!Object.values(FINE_BY_SEV).some(x=>x>0)) { FINE_BY_SEV.CRITICAL=15000;FINE_BY_SEV.HIGH=8500;FINE_BY_SEV.MEDIUM=2000; }
+
+  if (charts.fines) charts.fines.destroy();
+  charts.fines = new Chart(document.getElementById('chart-fines'), {
+    type:'doughnut',
+    data:{labels:['Critical','High','Medium'],
+      datasets:[{data:Object.values(FINE_BY_SEV),backgroundColor:['#EF4444','#F59E0B','#3B82F6'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:true,cutout:'65%',
+      plugins:{legend:{labels:{color:'#94A3B8',font:{size:12}}}}},
+  });
+
+  const tierData = {Platinum:0,Gold:0,Silver:0,Standard:0};
+  DEMO_PARTNERS.forEach(p => { tierData[(p.insurance_tier||{label:'Standard'}).label]++; });
+
+  if (charts.tiers) charts.tiers.destroy();
+  charts.tiers = new Chart(document.getElementById('chart-tiers'), {
+    type:'bar',
+    data:{labels:Object.keys(tierData),
+      datasets:[{data:Object.values(tierData),backgroundColor:['#10B981','#F59E0B','#94A3B8','#EF4444'],
+        borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:true,indexAxis:'y',
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#94A3B8'},grid:{color:'rgba(255,255,255,.06)'}},
+              y:{ticks:{color:'#94A3B8'},grid:{display:false}}}},
+  });
+}
+
+// ── Features grid ─────────────────────────────────────────────────────────────
+function buildFeaturesGrid() {
+  const g = document.getElementById('features-grid');
+  g.innerHTML = FEATURES_DATA.map(f => `
+    <div class="card" style="border-left:3px solid ${PHASE_COLORS[f.phase]};">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:10px;font-weight:700;color:${PHASE_COLORS[f.phase]};
+                     background:rgba(255,255,255,.05);padding:2px 6px;border-radius:4px;">
+          ${f.phase==='★'?'WOW':'Phase '+f.phase} · ${f.id}
+        </span>
+        <span style="font-size:10px;color:var(--green);background:rgba(16,185,129,.1);
+                     padding:2px 6px;border-radius:4px;">✓ Implemented</span>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${f.title}</div>
+      <div style="font-size:11px;color:var(--muted);">${f.ref}</div>
+    </div>`).join('');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(title, body) {
+  document.getElementById('toast-title').textContent = title;
+  document.getElementById('toast-body').textContent  = body;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3800);
+}
+</script>
+</body>
+</html>
