@@ -79,9 +79,9 @@ VisionAI addresses this challenge by automatically identifying, classifying, doc
 
 Most traffic monitoring systems stop at detecting a violation.
 
-VisionAI focuses on the complete enforcement workflow—from detection to evidence generation.
+VisionAI focuses on the complete enforcement workflow, right from detection to evidence generation.
 
-A key challenge in automated traffic monitoring is the **Courtroom Defensibility Bottleneck**: detecting a violation is not enough; authorities must also be able to explain and justify why it was detected.
+A key challenge in automated traffic monitoring is the **Courtroom Defensibility Bottleneck**: detecting a violation is not enough, authorities must also be able to explain and justify why it was detected.
 
 VisionAI automatically converts detections into structured evidence packages containing annotated images, violation details, timestamps, confidence scores, legal reasoning, and integrity hashes, making records easier to review, verify, and defend.
 
